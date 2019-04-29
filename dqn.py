@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 if torch.cuda.is_available:
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
+
 def mean(x):
     return sum(x) / float(len(x))
 
@@ -47,7 +48,7 @@ class Network(nn.Module):
 
 class DQN:
 
-    def __init__(self, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01, n_episodes=5000, gamma=0.95, batch_size=64):
+    def __init__(self, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01, n_episodes=20000, gamma=0.99, batch_size=128):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
@@ -55,10 +56,11 @@ class DQN:
         self.gamma = gamma
         self.batch_size = batch_size
 
-        self.replay_memory = deque(maxlen=100000)
+        self.replay_memory = deque(maxlen=10000)
         self.network = Network(4, 2, torch.optim.Adam, nn.MSELoss)
 
         self.scores = []
+        self.running_means = []
 
         self.env = gym.make('CartPole-v0')
 
@@ -87,7 +89,7 @@ class DQN:
             done = False
             score = 0
             while not done:
-                if random.random() > self.epsilon:
+                if random.random() < self.epsilon:
                     action = random.randint(0, 1)
                 else:
                     action = torch.argmax(self.network.forward(state)).item()
@@ -96,16 +98,15 @@ class DQN:
                 self.remember(state, action, reward, next_state, done)
                 state = next_state
                 score += 1
-                if score > 150:
-                    print("Problem solved")
-                    plt.plot(self.scores)
-                    plt.show()
-                    return
 
             self.scores.append(score)
 
-            if len(self.scores) > 50 and i % 50 == 0:
-                print("Episode: {}, Score: {}".format(i, mean(self.scores[-50:-1])))
+            if len(self.scores) > 100:
+                running_mean = mean(self.scores[-100:-1])
+                self.running_means.append(running_mean)
+                if i % 100 == 0:
+                    print("Episode: {}, Score: {}, Epsilon: {}".format(
+                        i, running_mean, self.epsilon))
 
             self.replay()
 
@@ -114,4 +115,5 @@ if __name__ == '__main__':
     agent = DQN()
     agent.run()
     plt.plot(agent.scores)
+    plt.plot(agent.running_means)
     plt.show()
