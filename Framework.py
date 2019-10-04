@@ -10,7 +10,7 @@ class DenseLayer:
     out = activation(X matmul W + b)
     """
 
-    def __init__(self, units, input_dim, activation=None):
+    def __init__(self, units, input_dim, activation):
         """
         Parameters:
             units: An integer that specifies the width of the output matrix
@@ -59,6 +59,37 @@ class DenseLayer:
         self.weight -= alpha * self.dw
         self.bias -= alpha * self.db
 
+
+class ConvolutionalLayer:
+
+    def __init__(self, input_channels, filters, input_dim, kernel_dim, stride=1, padding=0):
+        """
+        Parameters:
+        """
+        self.input_channels = input_channels
+        self.filters = filters
+        self.input_dim = (input_dim, input_dim) if (type(input_dim) is int) else input_dim
+        self.kernel_dim = (kernel_dim, kernel_dim) if (type(kernel_dim) is int) else kernel_dim
+        self.stride = (stride, stride) if (type(stride) is int) else stride
+        self.padding = (padding, padding) if (type(padding) is int) else padding
+
+        self.output_height = (self.input_dim[0] - self.kernel_dim[0] + 2 * self.padding[0]) / self.stride[0] + 1
+        assert self.output_height.is_integer(), "Non-integer output height"
+        self.output_width =  (self.input_dim[1] - self.kernel_dim[1] + 2 * self.padding[1]) / self.stride[1] + 1
+        assert self.output_width.is_integer(), "Non-integer output width"
+        self.output_dim = (self.input_channels * self.filters, self.output_height, self.output_width)
+
+        self.kernel = torch.randn(self.filters, *self.kernel_dim)
+        self.bias = torch.zeros(self.filters)
+
+    def forward(self, x):
+        """
+        Parameters:
+            x: Input tensor of size (Batch, Channels, Height, Width)
+        """
+        inputs = torch.zeros(x.shape[0], x.shape[1], x.shape[2] + 2 * self.padding[0], x.shape[3] + 2 * self.padding[1]) # Padding
+        output = torch.empty(x.shape[0], *self.output_dim) # (Batch, Output Channels, Output Height, Output Width)
+        
 
 class Model:
     """
@@ -201,6 +232,7 @@ def mean_absolute_error(y_hat, y, derivative=False):
         return temp
 
     return torch.mean(torch.abs(y_hat - y))
+
 
 def mean_squared_error(y_hat, y, derivative=False):
     """
